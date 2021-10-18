@@ -1,2 +1,2 @@
 # Anime-Search
-Mi Buscador de Animes
+Script para buscar info de animes y futuro bot 🙂
