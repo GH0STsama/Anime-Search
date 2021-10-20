@@ -35,7 +35,6 @@ def document(update, context):
     with open(f"./{name}.txt", "rb") as f:
         data = f.read().decode().split("\r\n")
     for anime in data:
-        texto += a + "\n"
         a = anisearch.search(anime)
         nombre = a["romanji"]
         coverImage = a["coverImage"]
