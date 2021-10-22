@@ -17,7 +17,7 @@ def translator(texto: str) -> str: # Traductor de Darkness XD
 
 def parse(desc: str) -> str: # Elimitar las etiquetas HTML de la descripcion
     desc_parse = re.sub("<.*?>", "", desc)
-    return desc_parse.replace("\n", "")
+    return desc_parse.replace("\n", " ")
 
 query = """
     query ($id: Int, $search: String) 
@@ -47,6 +47,7 @@ query = """
                 extraLarge
             }
             bannerImage
+            siteUrl
         } 
     }"""
 
@@ -54,6 +55,10 @@ def search(anime: str): # Buscar anime
     r = post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
     if r.status_code == 200:
         info = r.json()["data"]["Media"]
-        return {"romanji": info["title"]["romaji"], "native": info["title"]["native"], "episodes": info["episodes"], "duration": info["duration"], "averageScore": info["averageScore"], "genres": [f"{gen}, " for gen in info["genres"]], "studios": [f"{studio}, " for studio in info["studios"]["nodes"]], "description": translator(parse(info["description"]))}
+        studios = []
+        for i in info["studios"]["nodes"]:
+            studios.append(i["name"])
+        return {"romanji": info["title"]["romaji"], "native": info["title"]["native"], "english": info["title"]["english"], "episodes": info["episodes"], "duration": info["duration"], "averageScore": info["averageScore"], "genres": [f"{translator(gen)}" for gen in info["genres"]], "studios": studios, "description": translator(parse(info["description"])), "coverImage": info["coverImage"]["extraLarge"], "bannerImage": info["bannerImage"], "imageSt": info["siteUrl"].replace("anilist.co/anime/", "img.anili.st/media/")}
     else:
         print(f"Error {r.status_code}")
+        return "e"
