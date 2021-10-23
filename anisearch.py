@@ -1,4 +1,4 @@
-from requests import post
+import requests
 from googletrans import Translator
 from time import sleep
 import re
@@ -52,13 +52,29 @@ query = """
     }"""
 
 def search(anime: str): # Buscar anime
-    r = post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
+    r = requests.post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
     if r.status_code == 200:
         info = r.json()["data"]["Media"]
+        coverImage = info["coverImage"]["extraLarge"]
+        bannerImage = info["bannerImage"]
+        imageSt = info["siteUrl"].replace("anilist.co/anime/", "img.anili.st/media/")
         studios = []
-        for i in info["studios"]["nodes"]:
-            studios.append(i["name"])
-        return {"romanji": info["title"]["romaji"], "native": info["title"]["native"], "english": info["title"]["english"], "episodes": info["episodes"], "duration": info["duration"], "averageScore": info["averageScore"], "genres": [f"{translator(gen)}" for gen in info["genres"]], "studios": studios, "description": translator(parse(info["description"])), "coverImage": info["coverImage"]["extraLarge"], "bannerImage": info["bannerImage"], "imageSt": info["siteUrl"].replace("anilist.co/anime/", "img.anili.st/media/")}
+        for studio in info["studios"]["nodes"]:
+            studios.append(studio["name"])
+        dicc = {
+        "romanji": info["title"]["romaji"],
+        "native": info["title"]["native"],
+        "english": info["title"]["english"],
+        "episodes": info["episodes"],
+        "duration": info["duration"],
+        "averageScore": info["averageScore"],
+        "genres": [f"{translator(gen)}" for gen in info["genres"]],
+        "studios": studios,
+        "description": translator(parse(info["description"])),
+        "coverImage": coverImage,
+        "bannerImage": bannerImage,
+        "imageSt": imageSt,
+        }
+        return str(dicc), coverImage, bannerImage, imageSt
     else:
         print(f"Error {r.status_code}")
-        return "e"
