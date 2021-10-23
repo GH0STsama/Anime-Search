@@ -47,6 +47,7 @@ def document(update, context):
 
     text = ""
     for anime in animes:
+        print(anime)
         anime_name = parse_name(anime)
         find, cover, banner, st = search(anime)
         text += find + ",\n"
@@ -59,7 +60,6 @@ def document(update, context):
         with open(f"./data/images/banner_{parse_name(anime)}." + banner.split(".")[-1], "wb") as f:
             f.write(img_banner.content)
         img_st = requests.get(st)
-        print(st)
         with open(f"./data/images/st_{parse_name(anime)}." + "png", "wb") as f:
             f.write(img_st.content)
         sleep(1)
