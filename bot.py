@@ -139,12 +139,12 @@ def process_files(update, context):
         for file in files:
             fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
     fantasy_zip.close()
+    context.bot.send_document(document = open("./archivo.zip", "rb"), chat_id = name)
 
 updater = Updater(token = BOT_TOKEN, use_context = True)
 dp = updater.dispatcher
 dp.add_handler(CommandHandler('start', start))
 dp.add_handler(MessageHandler(Filters.document, process_files))
-
 
 updater.start_polling()
 print("Bot Iniciado!")
