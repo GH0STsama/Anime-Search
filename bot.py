@@ -102,29 +102,27 @@ for anime in animes:
         anime_name = parse_name(anime)
         find, cover, banner, st = search(anime)
         text += find + ",\n"
-        if not os.path.exists("./data/images"):
-            os.makedirs("./data/images")
         img_cover = requests.get(cover)
-        with open(f"./data/images/cover_{parse_name(anime)}." + cover.split(".")[-1], "wb") as f:
+        with open(f"./cover_{parse_name(anime)}." + cover.split(".")[-1], "wb") as f:
             f.write(img_cover.content)
         img_banner = requests.get(banner)
-        with open(f"./data/images/banner_{parse_name(anime)}." + banner.split(".")[-1], "wb") as f:
+        with open(f"./banner_{parse_name(anime)}." + banner.split(".")[-1], "wb") as f:
             f.write(img_banner.content)
         img_st = requests.get(st)
-        with open(f"./data/images/st_{parse_name(anime)}." + "png", "wb") as f:
+        with open(f"./st_{parse_name(anime)}." + "png", "wb") as f:
             f.write(img_st.content)
         print(f"complete {anime}")
         sleep(1)
     except:
         print(f"error {anime}")
 
-with open("./data/listado.py", "wb") as f:
+with open("./listado.py", "wb") as f:
    f.write(text.encode())
 
 fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
-for folder, subfolders, files in os.walk('./data'):
+for folder, subfolders, files in os.walk('.'):
     for file in files:
-        fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
+        fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './'), compress_type = zipfile.ZIP_DEFLATED)
 fantasy_zip.close()
 
 
