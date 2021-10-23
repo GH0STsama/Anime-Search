@@ -124,17 +124,3 @@ for folder, subfolders, files in os.walk('.'):
     for file in files:
         fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './'), compress_type = zipfile.ZIP_DEFLATED)
 fantasy_zip.close()
-
-
-def start(update, context):
-    update.message.reply_text("running...")
-
-from telegram.ext import Updater, CommandHandler
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-updater = Updater(token = BOT_TOKEN, use_context = True)
-dp = updater.dispatcher
-dp.add_handler(CommandHandler("start", start))
-
-updater.start_polling()
-print("Bot Iniciado!")
-updater.idle()
