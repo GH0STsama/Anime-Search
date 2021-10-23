@@ -2,7 +2,7 @@ from time import sleep
 import requests
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from os import getenv, unlink
-import anisearch
+from anisearch import search
 import os
 import zipfile
 
@@ -26,40 +26,53 @@ def messages(update, context):
     else:
         pass
 
+def parse_name(fname: str) -> str: # Caracteres invalidos
+    fname = fname.replace("<", "")
+    fname = fname.replace(":", "")
+    fname = fname.replace(">", "")
+    fname = fname.replace("/", "")
+    fname = fname.replace("\\", "")
+    fname = fname.replace("?", "")
+    fname = fname.replace('"', "'")
+    fname = fname.replace("|", " ")
+    return fname
+
 def document(update, context):
     name = update.effective_user.id
-    id = update.message.document.file_id
-    texto = ""
-    f = context.bot.get_file(id)
+    f = context.bot.get_file(update.message.document.file_id)
     f.download(f"./{name}.txt")
+
     with open(f"./{name}.txt", "rb") as f:
-        data = f.read().decode().split("\r\n")
-    for anime in data:
-        a = anisearch.search(anime)
-        nombre = a["romanji"]
-        coverImage = a["coverImage"]
-        bannerImage = a["bannerImage"]
-        imageSt = a["imageSt"]
-        res_c = requests.get(coverImage)
-        with open(f"./files/{nombre}.jpg", "wb") as f:
-            f.write(res_c.content)
-        res_b = requests.get(bannerImage)
-        with open(f"./files/banner_{nombre}.jpg", "wb") as f:
-            f.write(res_b.content)
-        res_s = requests.get(imageSt)
-        with open(f"./files/st_{nombre}.jpg", "wb") as f:
-            f.write(res_s.content)
+        animes = f.read().decode().split("\r\n")
+
+    text = ""
+    for anime in animes:
+        anime_name = parse_name(anime)
+        find, cover, banner, st = search(anime)
+        text += find + ",\n"
+        if not os.path.exists("./data/images"):
+            os.makedirs("./data/images")
+        img_cover = requests.get(cover)
+        with open(f"./data/images/cover_{parse_name(anime)}." + cover.split(".")[-1], "wb") as f:
+            f.write(img_cover.content)
+        img_banner = requests.get(banner)
+        with open(f"./data/images/banner_{parse_name(anime)}." + banner.split(".")[-1], "wb") as f:
+            f.write(img_banner.content)
+        img_st = requests.get(st)
+        print(st)
+        with open(f"./data/images/st_{parse_name(anime)}." + "png", "wb") as f:
+            f.write(img_st.content)
         sleep(1)
-    unlink(f"./{name}.txt")
-    with open("listado.py", "wb") as f:
-        f.write(texto.encode())
-    context.bot.send_document(document = open("./listado.py", "rb"), chat_id = name)
-    unlink("listado.py")
+
+    with open("./data/listado.py", "wb") as f:
+       f.write(text.encode())
+
     fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
-    for folder, subfolders, files in os.walk('./files'):
+    for folder, subfolders, files in os.walk('./data'):
         for file in files:
-            fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './files'), compress_type = zipfile.ZIP_DEFLATED)
+            fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
     fantasy_zip.close()
+
     context.bot.send_document(document = open("./archivo.zip", "rb"), chat_id = name)
     unlink("./archivo.zip")
 
