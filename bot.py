@@ -6,7 +6,7 @@ import os
 import zipfile
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 
-BOT_TOKEN = "2097192101:AAGT03MXSnxIrgbU3gRfk0-OPax5vduMvow"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 def start(update, context):
     update.message.reply_text("running..")
