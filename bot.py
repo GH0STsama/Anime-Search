@@ -4,6 +4,12 @@ from time import sleep
 import re
 import os
 import zipfile
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+
+BOT_TOKEN = "2097192101:AAGT03MXSnxIrgbU3gRfk0-OPax5vduMvow"
+
+def start(update, context):
+    update.message.reply_text("running..")
 
 def translator(texto: str) -> str: # Traductor de Darkness XD
     tr = Translator()
@@ -92,35 +98,54 @@ def search(anime: str): # Buscar anime
     else:
         print(f"Error {r.status_code}")
 
-text = ""
+def process_files(update, context):
+    name = update.effective_user.id
+    file_id = update.message.document.file_id
+    archivo = context.bot.get_file(file_id)
+    archivo.download(f"./{name}")
 
-with open("./new", "rb") as f:
-    animes = f.read().decode().split("\r\n")
-for anime in animes:
-    try:
-        print(f"start {anime}")
-        anime_name = parse_name(anime)
-        find, cover, banner, st = search(anime)
-        text += find + ",\n"
-        img_cover = requests.get(cover)
-        with open(f"./cover_{parse_name(anime)}." + cover.split(".")[-1], "wb") as f:
-            f.write(img_cover.content)
-        img_banner = requests.get(banner)
-        with open(f"./banner_{parse_name(anime)}." + banner.split(".")[-1], "wb") as f:
-            f.write(img_banner.content)
-        img_st = requests.get(st)
-        with open(f"./st_{parse_name(anime)}." + "png", "wb") as f:
-            f.write(img_st.content)
-        print(f"complete {anime}")
-        sleep(1)
-    except:
-        print(f"error {anime}")
+    text = ""
 
-with open("./listado.py", "wb") as f:
-   f.write(text.encode())
+    with open(f"./{name}", "rb") as f:
+        animes = f.read().decode().split("\r\n")
 
-fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
-for folder, subfolders, files in os.walk('.'):
-    for file in files:
-        fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './'), compress_type = zipfile.ZIP_DEFLATED)
-fantasy_zip.close()
+    for anime in animes:
+        try:
+            print(f"start {anime}")
+            anime_name = parse_name(anime)
+            find, cover, banner, st = search(anime)
+            text += find + ",\n"
+            if not os.path.exists("./data"):
+                os.makedirs("./data")
+            img_cover = requests.get(cover)
+            with open(f"./data/cover_{anime_name}." + cover.split(".")[-1], "wb") as f:
+                f.write(img_cover.content)
+            img_banner = requests.get(banner)
+            with open(f"./data/banner_{anime_name}." + banner.split(".")[-1], "wb") as f:
+                f.write(img_banner.content)
+            img_st = requests.get(st)
+            with open(f"./data/st_{anime_name}." + "png", "wb") as f:
+                f.write(img_st.content)
+            print(f"complete {anime}")
+            sleep(1)
+        except:
+            print(f"error {anime}")
+
+    with open("./data/listado.py", "wb") as f:
+       f.write(text.encode())
+
+    fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
+    for folder, subfolders, files in os.walk('./data'):
+        for file in files:
+            fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
+    fantasy_zip.close()
+
+updater = Updater(token = BOT_TOKEN, use_context = True)
+dp = updater.dispatcher
+dp.add_handler(CommandHandler('start', start))
+dp.add_handler(MessageHandler(Filters.document, process_files))
+
+
+updater.start_polling()
+print("Bot Iniciado!")
+updater.idle()
