@@ -64,6 +64,7 @@ def document(update, context):
             f.write(img_st.content)
         sleep(1)
 
+    unlink(f"./{name}.txt")
     with open("./data/listado.py", "wb") as f:
        f.write(text.encode())
 
