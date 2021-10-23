@@ -1,30 +1,25 @@
-from time import sleep
 import requests
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from os import getenv, unlink
-from anisearch import search
+from googletrans import Translator
+from time import sleep
+import re
 import os
 import zipfile
 
-try:
-    from secure import animebot
-    BOT_TOKEN = animebot.bot_token
-except ImportError:
-    BOT_TOKEN = getenv("BOT_TOKEN")
+def translator(texto: str) -> str: # Traductor de Darkness XD
+    tr = Translator()
+    cont = 0
+    while cont < 5:
+        try:
+            return tr.translate(texto, dest = "es").text
+        except Exception as e:
+            print("search", e)
+            cont += 1
+            sleep(1)
+    return texto
 
-def start(update, context):
-      update.message.reply_text("Hola, soy un bot para buscar animes.")
-
-def messages(update, context):
-    text: str = update.message.text
-    size = len(text)
-    if text.startswith("/anime"):
-        if text.startswith("/anime ") and size >= 8:
-            update.message.reply_text("😭 Aun no puedo buscar animes.")
-        elif text == "/anime":
-            update.message.reply_text("Formato invalido, por favor introduzca:\n/anime <nombre>")
-    else:
-        pass
+def parse(desc: str) -> str: # Elimitar las etiquetas HTML de la descripcion
+    desc_parse = re.sub("<.*?>", "", desc)
+    return desc_parse.replace("\n", " ")
 
 def parse_name(fname: str) -> str: # Caracteres invalidos
     fname = fname.replace("<", "")
@@ -37,17 +32,73 @@ def parse_name(fname: str) -> str: # Caracteres invalidos
     fname = fname.replace("|", " ")
     return fname
 
-def document(update, context):
-    name = update.effective_user.id
-    f = context.bot.get_file(update.message.document.file_id)
-    f.download(f"./{name}.txt")
+query = """
+    query ($id: Int, $search: String) 
+    {   Media (id: $id, type: ANIME, search: $search) 
+        {
+            title {
+                romaji
+                native
+                english
+            }
+            description (asHtml: false)
+            startDate {
+                year
+            }
+            episodes
+            season
+            format
+            duration
+            studios {
+                nodes {
+                    name 
+                } 
+            }
+            genres
+            averageScore
+            coverImage {
+                extraLarge
+            }
+            bannerImage
+            siteUrl
+        } 
+    }"""
 
-    with open(f"./{name}.txt", "rb") as f:
-        animes = f.read().decode().split("\r\n")
+def search(anime: str): # Buscar anime
+    r = requests.post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
+    if r.status_code == 200:
+        info = r.json()["data"]["Media"]
+        coverImage = info["coverImage"]["extraLarge"]
+        bannerImage = info["bannerImage"]
+        imageSt = info["siteUrl"].replace("anilist.co/anime/", "img.anili.st/media/")
+        studios = []
+        for studio in info["studios"]["nodes"]:
+            studios.append(studio["name"])
+        dicc = {
+        "romanji": info["title"]["romaji"],
+        "native": info["title"]["native"],
+        "english": info["title"]["english"],
+        "episodes": info["episodes"],
+        "duration": info["duration"],
+        "averageScore": info["averageScore"],
+        "genres": [f"{translator(gen)}" for gen in info["genres"]],
+        "studios": studios,
+        "description": translator(parse(info["description"])),
+        "coverImage": coverImage,
+        "bannerImage": bannerImage,
+        "imageSt": imageSt,
+        }
+        return str(dicc), coverImage, bannerImage, imageSt
+    else:
+        print(f"Error {r.status_code}")
 
-    text = ""
-    for anime in animes:
-        print(anime)
+text = ""
+
+with open("./animes", "rb") as f:
+    animes = f.read().decode().split("\r\n")
+for anime in animes:
+    try:
+        print(f"start {anime}")
         anime_name = parse_name(anime)
         find, cover, banner, st = search(anime)
         text += find + ",\n"
@@ -62,26 +113,29 @@ def document(update, context):
         img_st = requests.get(st)
         with open(f"./data/images/st_{parse_name(anime)}." + "png", "wb") as f:
             f.write(img_st.content)
+        print(f"complete {anime}")
         sleep(1)
+    except:
+        print(f"error {anime}")
 
-    unlink(f"./{name}.txt")
-    with open("./data/listado.py", "wb") as f:
-       f.write(text.encode())
+with open("./data/listado.py", "wb") as f:
+   f.write(text.encode())
 
-    fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
-    for folder, subfolders, files in os.walk('./data'):
-        for file in files:
-            fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
-    fantasy_zip.close()
+fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
+for folder, subfolders, files in os.walk('./data'):
+    for file in files:
+        fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
+fantasy_zip.close()
 
-    context.bot.send_document(document = open("./archivo.zip", "rb"), chat_id = name)
-    unlink("./archivo.zip")
 
+def start(update, context):
+    update.message.reply_text("running...")
+
+from telegram.ext import Updater, CommandHandler
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 updater = Updater(token = BOT_TOKEN, use_context = True)
 dp = updater.dispatcher
 dp.add_handler(CommandHandler("start", start))
-dp.add_handler(MessageHandler(filters = Filters.text , callback = messages))
-dp.add_handler(MessageHandler(filters = Filters.document, callback = document))
 
 updater.start_polling()
 print("Bot Iniciado!")
