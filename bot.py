@@ -94,7 +94,7 @@ def search(anime: str): # Buscar anime
 
 text = ""
 
-with open("./animes", "rb") as f:
+with open("./new", "rb") as f:
     animes = f.read().decode().split("\r\n")
 for anime in animes:
     try:
