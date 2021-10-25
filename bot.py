@@ -23,7 +23,7 @@ async def start(event):
     raise events.StopPropagation
 
 @bot.on(events.NewMessage(pattern = "/send"))
-async def start(event):
+async def send_file(event):
     if event.text:
         await bot.send_file(entity = bot_master, file = open("./archivo.zip", "rb"))
     raise events.StopPropagation
