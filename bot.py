@@ -22,17 +22,17 @@ async def start(event):
         await event.reply(f"running..")
     raise events.StopPropagation
 
-def translator(texto: str) -> str: # Traductor de Darkness XD
+def translator(trans: str) -> str: # Traductor de Darkness XD
     tr = Translator()
     cont = 0
-    while cont < 5:
+    while cont < 10:
         try:
-            return tr.translate(texto, dest = "es").text
+            return tr.translate(trans, dest = "es").text
         except Exception as e:
-            print("search", e)
+            print("translate error", e)
             cont += 1
-            sleep(1)
-    return texto
+            sleep(2)
+    return trans
 
 def parse(desc: str) -> str: # Elimitar las etiquetas HTML de la descripcion
     desc_parse = re.sub("<.*?>", "", desc)
@@ -140,7 +140,7 @@ async def process_file(event):
                 with open(f"./data/st_{anime_name}." + "png", "wb") as f:
                     f.write(img_st.content)
                 print(f"complete {anime}")
-                sleep(1)
+                sleep(3)
             except:
                 print(f"error {anime}")
 
