@@ -6,19 +6,23 @@ import os
 import zipfile
 from telethon import TelegramClient, events, utils
 
-# Importar las variables de entorno
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-api_hash = os.getenv("api_hash")
-api_id = int(os.getenv("api_id"))
-bot_master = int(os.getenv("bot_master"))
+try:
+    from secure import animebot
+    BOT_TOKEN = animebot.bot_token
+    api_hash = animebot.api_hash
+    api_id = animebot.api_id
+    bot_master = animebot.bot_master
+except:
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    api_hash = os.getenv("api_hash")
+    api_id = int(os.getenv("api_id"))
+    bot_master = int(os.getenv("bot_master"))
 
-bot = TelegramClient("anime_search", api_id, api_hash, request_retries = 10, flood_sleep_threshold = 120).start(bot_token = BOT_TOKEN)
+bot = TelegramClient("animebot", api_id, api_hash, request_retries = 10, flood_sleep_threshold = 120).start(bot_token = BOT_TOKEN)
 
 @bot.on(events.NewMessage(pattern = "/start")) # Comando start
 async def start(event):
     if event.text:
-        sender = await event.get_sender()
-        name = utils.get_display_name(sender)
         await event.reply(f"running..")
     raise events.StopPropagation
 
@@ -82,7 +86,7 @@ query = """
         } 
     }"""
 
-def search(anime: str) -> str: # Buscar anime
+def search(anime: str): # Realiza la busqueda
     r = requests.post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
     if r.status_code == 200:
         info = r.json()["data"]["Media"]
@@ -106,9 +110,29 @@ def search(anime: str) -> str: # Buscar anime
         "bannerImage": bannerImage,
         "imageSt": imageSt,
         }
-        return str(dicc), coverImage, bannerImage, imageSt
+        return dicc, coverImage, bannerImage, imageSt
     else:
         print(f"Error {r.status_code}")
+
+@bot.on(events.NewMessage(pattern = "/anime")) # Buscar anime
+async def anime_search(event):
+    if event.text:
+        user = event.sender_id
+        if len(event.text) >= 8 and str(event.text).startswith("/anime "):
+            name = str(event.text)[7:]
+            find, cover, banner, st = search(name)
+            picture = requests.get(st)
+            with open(f"./{user}.png", "wb") as f:
+                f.write(picture.content)
+            await bot.send_file(entity = user, file = open(f"./{user}.png", "rb"), 
+            caption = 
+            f'<b>{find["romanji"]}</b> ({find["native"]})\n\n'
+            f'<b>Descripción:</b>\n{find["description"]}', parse_mode = "html")
+            os.unlink(f"./{user}.png")
+        else:
+            await event.reply("Formato incorrecto, por favor use:\n\n/anime <nombre>")
+    else:
+        raise events.StopPropagation
 
 @bot.on(events.NewMessage(from_users = bot_master)) # Procesa los documentos que le envie el bot master
 async def process_file(event):
@@ -127,6 +151,7 @@ async def process_file(event):
                 print(f"start {anime}")
                 anime_name = parse_name(anime)
                 find, cover, banner, st = search(anime)
+                find = str(find)
                 text += find + ",\n"
                 if not os.path.exists("./data"):
                     os.makedirs("./data")
