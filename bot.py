@@ -4,7 +4,7 @@ from time import sleep
 import re
 import os
 import zipfile
-from telethon import TelegramClient, events, utils
+from telethon import TelegramClient, events
 
 try:
     from secure import animebot
@@ -127,6 +127,10 @@ async def anime_search(event):
             await bot.send_file(entity = user, file = open(f"./{user}.png", "rb"), 
             caption = 
             f'<b>{find["romanji"]}</b> ({find["native"]})\n\n'
+            f'<b>Episodios: </b>{find["episodes"]}'
+            f'<b>Duración: </b>{find["duration"]} mins aprox. por ep.'
+            f'<b>Calificación: </b>{find["averageScore"]}'
+            f'<b>Géneros: </b>'
             f'<b>Descripción:</b>\n{find["description"]}', parse_mode = "html")
             os.unlink(f"./{user}.png")
         else:
