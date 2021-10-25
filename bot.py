@@ -114,11 +114,11 @@ def search(anime: str) -> str: # Buscar anime
 async def process_file(event):
     if event.document:
         event.reply("procesando...")
-        await event.download_media("./animes")
+        await event.download_media("./animes.file")
 
         text = ""
 
-        with open("./animes", "rb") as f:
+        with open("./animes.file", "rb") as f:
             animes = f.read().decode().split("\n")
 
         for anime in animes:
