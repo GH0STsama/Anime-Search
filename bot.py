@@ -12,7 +12,7 @@ api_hash = os.getenv("api_hash")
 api_id = int(os.getenv("api_id"))
 bot_master = int(os.getenv("bot_master"))
 
-bot = TelegramClient("alice", api_id, api_hash, request_retries = 10, flood_sleep_threshold = 120).start(bot_token = BOT_TOKEN)
+bot = TelegramClient("anime_search", api_id, api_hash, request_retries = 10, flood_sleep_threshold = 120).start(bot_token = BOT_TOKEN)
 
 @bot.on(events.NewMessage(pattern = "/start")) # Comando start
 async def start(event):
