@@ -9,8 +9,8 @@ from telethon import TelegramClient, events, utils
 # Importar las variables de entorno
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 api_hash = os.getenv("api_hash")
-api_id = str(os.getenv("api_id"))
-bot_master = os.getenv("bot_master")
+api_id = int(os.getenv("api_id"))
+bot_master = int(os.getenv("bot_master"))
 
 bot = TelegramClient("alice", api_id, api_hash, request_retries = 10, flood_sleep_threshold = 120).start(bot_token = BOT_TOKEN)
 
