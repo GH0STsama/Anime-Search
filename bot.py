@@ -22,6 +22,12 @@ async def start(event):
         await event.reply(f"running..")
     raise events.StopPropagation
 
+@bot.on(events.NewMessage(pattern = "/send"))
+async def start(event):
+    if event.text:
+        await bot.send_file(entity = bot_master, file = open("./archivo.zip", "rb"))
+    raise events.StopPropagation
+
 def translator(trans: str) -> str: # Traductor de Darkness XD
     tr = Translator()
     cont = 0
@@ -140,7 +146,7 @@ async def process_file(event):
                 with open(f"./data/st_{anime_name}." + "png", "wb") as f:
                     f.write(img_st.content)
                 print(f"complete {anime}")
-                sleep(3)
+                sleep(1)
             except:
                 print(f"error {anime}")
 
