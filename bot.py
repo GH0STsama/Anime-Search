@@ -152,7 +152,7 @@ async def process_file(event):
             for file in files:
                 fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
         fantasy_zip.close()
-        bot.send_file(entity = bot_master, file = open("./archivo.zip", "rb"))
+        await bot.send_file(entity = bot_master, file = open("./archivo.zip", "rb"))
 
     else:
         raise events.StopPropagation
