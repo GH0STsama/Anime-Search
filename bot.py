@@ -1,32 +1,25 @@
-import requests
+from telethon import TelegramClient, Button
+from telethon.events import NewMessage, StopPropagation
+from telethon.utils import get_display_name
+from requests import post, get
+from json import loads
 from googletrans import Translator
-from time import sleep
-import re
-import os
-import zipfile
-from telethon import TelegramClient, events
+from re import sub
+from os import getenv
 
-try:
-    from secure import animebot
-    BOT_TOKEN = animebot.bot_token
-    api_hash = animebot.api_hash
-    api_id = animebot.api_id
-    bot_master = animebot.bot_master
-except:
-    BOT_TOKEN = os.getenv("BOT_TOKEN")
-    api_hash = os.getenv("api_hash")
-    api_id = int(os.getenv("api_id"))
-    bot_master = int(os.getenv("bot_master"))
+try: # Intenta importar del secure.py para pruebas locales
+    from secure import anime_bot
+    api_id = int(anime_bot.api_id)
+    api_hash = anime_bot.api_hash
+    bot_token = anime_bot.bot_token
+except: # Importar variables de entorno
+    api_id = int(getenv("api_id"))
+    api_hash = getenv("api_hash")
+    bot_token = getenv("ANIME_BOT_TOKEN")
 
-bot = TelegramClient("animebot", api_id, api_hash, request_retries = 10, flood_sleep_threshold = 120).start(bot_token = BOT_TOKEN)
+bot = TelegramClient("anime_bot", api_id, api_hash).start(bot_token = bot_token)
 
-@bot.on(events.NewMessage(pattern = "/start")) # Comando start
-async def start(event):
-    if event.text:
-        await event.reply(f"running..")
-    raise events.StopPropagation
-
-def translator(trans: str) -> str: # Traductor de Darkness XD
+async def translator(trans: str) -> str: # Traductor de Darkness XD
     tr = Translator()
     cont = 0
     while cont < 10:
@@ -35,23 +28,11 @@ def translator(trans: str) -> str: # Traductor de Darkness XD
         except Exception as e:
             print("translate error", e)
             cont += 1
-            sleep(2)
     return trans
 
-def parse(desc: str) -> str: # Elimitar las etiquetas HTML de la descripcion
-    desc_parse = re.sub("<.*?>", "", desc)
+async def parse(desc: str) -> str: # Elimitar las etiquetas HTML de la descripcion
+    desc_parse = sub("<.*?>", "", desc)
     return desc_parse.replace("\n", " ")
-
-def parse_name(fname: str) -> str: # Caracteres invalidos
-    fname = fname.replace("<", "")
-    fname = fname.replace(":", "")
-    fname = fname.replace(">", "")
-    fname = fname.replace("/", "")
-    fname = fname.replace("\\", "")
-    fname = fname.replace("?", "")
-    fname = fname.replace('"', "'")
-    fname = fname.replace("|", " ")
-    return fname
 
 # query para la consulta de la informacion en la api de anilist, graphql
 query = """
@@ -86,108 +67,60 @@ query = """
         } 
     }"""
 
-def search(anime: str): # Realiza la busqueda
-    r = requests.post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
-    if r.status_code == 200:
-        info = r.json()["data"]["Media"]
-        coverImage = info["coverImage"]["extraLarge"]
-        bannerImage = info["bannerImage"]
-        imageSt = info["siteUrl"].replace("anilist.co/anime/", "img.anili.st/media/")
-        studios = []
-        for studio in info["studios"]["nodes"]:
-            studios.append(studio["name"])
+@bot.on(NewMessage(pattern = "/start"))
+async def start(event):
+    await bot.send_file(entity = event.sender_id, file = "./miku.jpg", caption = "<b>Miku:</b>\n\n"
+    f'Hola <a href="tg://user?id={event.sender_id}">{get_display_name(await event.get_sender())}</a>, puedo buscar cualquier anime usando la API de anilist.\n\nUsa el comando /anime <code>nombre</code> para buscar info de algun anime', 
+    parse_mode = "html", buttons  = [
+        [Button.url("👻 Canal", "https://t.me/GhostOpenSource"), Button.url("💳 Donar", "https://qvapay.com/payme/ghostsama")],
+        [Button.url("👾 GitHub", "https://github.com/GH0STsama/Anime-Search")]])
+
+async def anime_search(anime: str) -> dict: # Realiza la busqueda
+    r = post("https://graphql.anilist.co", json = {"query": query, "variables": {"search": anime}})
+    info = loads(r.text)["data"]["Media"]
+    if info != None:
         dicc = {
         "romanji": info["title"]["romaji"],
         "native": info["title"]["native"],
-        "english": info["title"]["english"],
         "episodes": info["episodes"],
         "duration": info["duration"],
         "averageScore": info["averageScore"],
-        "genres": [f"{translator(gen)}" for gen in info["genres"]],
-        "studios": studios,
-        "description": translator(parse(info["description"])),
-        "coverImage": coverImage,
-        "bannerImage": bannerImage,
-        "imageSt": imageSt,
+        "genres": [f"{await translator(gen)}" for gen in info["genres"]],
+        "description": await translator(await parse(info["description"])),
+        "imageSt": info["siteUrl"].replace("anilist.co/anime/", "img.anili.st/media/")
         }
-        return dicc, coverImage, bannerImage, imageSt
+        return dicc
     else:
-        print(f"Error {r.status_code}")
+        return None
 
-@bot.on(events.NewMessage(pattern = "/anime")) # Buscar anime
-async def anime_search(event):
+@bot.on(NewMessage(pattern = "/anime")) # Buscar anime
+async def anime_search_handler(event):
     if event.text:
         user = event.sender_id
         if len(event.text) >= 8 and str(event.text).startswith("/anime "):
             name = str(event.text)[7:]
-            find, cover, banner, st = search(name)
-            picture = requests.get(st)
-            with open(f"./{user}.png", "wb") as f:
-                f.write(picture.content)
-            await bot.send_file(entity = user, file = open(f"./{user}.png", "rb"), 
-            caption = 
-            f'<b>{find["romanji"]}</b> ({find["native"]})\n\n'
-            f'<b>Episodios: </b>{find["episodes"]}'
-            f'<b>Duración: </b>{find["duration"]} mins aprox. por ep.'
-            f'<b>Calificación: </b>{find["averageScore"]}'
-            f'<b>Géneros: </b>'
-            f'<b>Descripción:</b>\n{find["description"]}', parse_mode = "html")
-            os.unlink(f"./{user}.png")
+            find = await anime_search(name)
+            if find != None:
+                response = get(find["imageSt"])
+                with open(f"./{user}.png", "wb") as f:
+                    f.write(response.content)
+                gen = ""
+                for genres in find["genres"]:
+                    gen += genres + ", "
+                await bot.send_file(entity = user, file = open(f"./{user}.png", "rb"), 
+                caption = 
+                f'<b>{find["romanji"]}</b> (<code>{find["native"]}</code>)\n\n'
+                f'<b>Episodios: </b><code>{find["episodes"]}</code>\n'
+                f'<b>Duración: </b><code>{find["duration"]} mins aprox. por ep.</code>\n'
+                f'<b>Calificación: </b><code>{find["averageScore"]}\n</code>'
+                f'<b>Géneros: </b><code>{gen[:-2]}</code>\n'
+                f'\n<b>Descripción:</b>\n{find["description"]}', parse_mode = "html")
+            else:
+                await event.reply("No se encuentra el anime")
         else:
             await event.reply("Formato incorrecto, por favor use:\n\n/anime <nombre>")
     else:
-        raise events.StopPropagation
+        raise StopPropagation
 
-@bot.on(events.NewMessage(from_users = bot_master)) # Procesa los documentos que le envie el bot master
-async def process_file(event):
-    if event.document:
-        event.reply("procesando...")
-        await event.download_media("./animes.file")
-
-        text = ""
-
-        with open("./animes.file", "rb") as f:
-            animes = f.read().decode().split("\n")
-
-        for anime in animes:
-            anime = anime.replace("\r", "").replace("\n", "")
-            try:
-                print(f"start {anime}")
-                anime_name = parse_name(anime)
-                find, cover, banner, st = search(anime)
-                find = str(find)
-                text += find + ",\n"
-                if not os.path.exists("./data"):
-                    os.makedirs("./data")
-                img_cover = requests.get(cover)
-                with open(f"./data/cover_{anime_name}." + cover.split(".")[-1], "wb") as f:
-                    f.write(img_cover.content)
-                img_banner = requests.get(banner)
-                with open(f"./data/banner_{anime_name}." + banner.split(".")[-1], "wb") as f:
-                    f.write(img_banner.content)
-                img_st = requests.get(st)
-                with open(f"./data/st_{anime_name}." + "png", "wb") as f:
-                    f.write(img_st.content)
-                print(f"complete {anime}")
-                sleep(1)
-            except:
-                print(f"error {anime}")
-
-        with open("./data/listado.py", "wb") as f:
-           f.write(text.encode())
-
-        fantasy_zip = zipfile.ZipFile('./archivo.zip', 'w')
-        for folder, subfolders, files in os.walk('./data'):
-            for file in files:
-                fantasy_zip.write(os.path.join(folder, file), os.path.relpath(os.path.join(folder,file), './data'), compress_type = zipfile.ZIP_DEFLATED)
-        fantasy_zip.close()
-        await bot.send_file(entity = bot_master, file = open("./archivo.zip", "rb"))
-
-    else:
-        raise events.StopPropagation
-
-try:
-    print("Bot Iniciado!")
-    bot.run_until_disconnected()
-finally:
-    bot.disconnect()
+print("Bot Iniciado!")
+bot.run_until_disconnected()
